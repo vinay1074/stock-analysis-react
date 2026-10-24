@@ -1,70 +1,99 @@
-const formatValue = (key, value) => {
-  if (value === null || value === undefined || value === '') {
-    return '—'
+import React, { useState } from "react";
+
+export default function BreakoutTable({ stocks, onAddToPortfolio }) {
+  const [quantities, setQuantities] = useState({});
+  const [addingSymbol, setAddingSymbol] = useState(null);
+
+  if (!stocks || stocks.length === 0) {
+    return <div className="empty-state">No breakout stocks matched the criteria for this date.</div>;
   }
 
-  if (typeof value === 'number') {
-    const lowerKey = key.toLowerCase()
+  const handleQtyChange = (symbol, value) => {
+    setQuantities((prev) => ({
+      ...prev,
+      [symbol]: Math.max(1, parseInt(value, 10) || 1),
+    }));
+  };
 
-    if (lowerKey.includes('gain') || lowerKey.includes('return') || lowerKey.includes('pct')) {
-      return `${value.toFixed(2)}%`
+  const handleBuyClick = async (stock) => {
+    setAddingSymbol(stock.symbol);
+    try {
+      await onAddToPortfolio({
+        symbol: stock.symbol,
+        buy_price: stock.close_price,
+        quantity: quantities[stock.symbol] || 1,
+        target_price: stock.ai_target > 0 ? stock.ai_target : null,
+        stop_loss: stock.ai_stop_loss > 0 ? stock.ai_stop_loss : null,
+      });
+    } finally {
+      setAddingSymbol(null);
     }
+  };
 
-    if (Number.isInteger(value)) {
-      return value.toLocaleString()
-    }
-
-    return value.toFixed(2)
-  }
-
-  if (typeof value === 'string' && value.trim() !== '') {
-    const numeric = Number(value.replace(/[%,$\s]/g, ''))
-    if (!Number.isNaN(numeric) && key.toLowerCase().includes('gain')) {
-      return `${numeric.toFixed(2)}%`
-    }
-  }
-
-  return String(value)
-}
-
-function BreakoutTable({ rows = [], sortKey = '', sortDirection = 'desc', onSort }) {
-  const columns = rows.length ? Object.keys(rows[0]) : []
-
-  if (!rows.length) {
-    return <div className="empty-state">No breakout records found.</div>
-  }
+  const getSignalBadgeClass = (signal = "") => {
+    const normalized = signal.toLowerCase();
+    if (normalized.includes("buy")) return "badge badge-buy";
+    if (normalized.includes("sell")) return "badge badge-sell";
+    return "badge badge-hold";
+  };
 
   return (
-    <div className="table-wrap">
-      <table>
+    <div className="table-responsive">
+      <table className="stock-table">
         <thead>
           <tr>
-            {columns.map((column) => (
-              <th key={column}>
-                <button
-                  type="button"
-                  className="sort-button"
-                  onClick={() => onSort && onSort(column)}
-                >
-                  <span>{column}</span>
-                  {sortKey === column ? <small>{sortDirection === 'asc' ? '↑' : '↓'}</small> : <small>↕</small>}
-                </button>
-              </th>
-            ))}
+            <th>Symbol</th>
+            <th>Close (₹)</th>
+            <th>% Gain</th>
+            <th>Volume</th>
+            <th>AI Signal</th>
+            <th>Target (₹)</th>
+            <th>Stop-Loss (₹)</th>
+            <th>AI Catalyst & Technical Summary</th>
+            <th>Track Position</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={`${row.symbol || 'row'}-${index}`}>
-              {columns.map((column) => (
-                <td key={`${column}-${index}`}>{formatValue(column, row[column])}</td>
-              ))}
+          {stocks.map((stock) => (
+            <tr key={stock.symbol}>
+              <td className="symbol-cell">
+                <strong>{stock.symbol}</strong>
+                <span className="series-tag">{stock.series}</span>
+              </td>
+              <td>₹{stock.close_price.toFixed(2)}</td>
+              <td className="text-positive">+{stock.percentage_change.toFixed(2)}%</td>
+              <td>{stock.volume.toLocaleString("en-IN")}</td>
+              <td>
+                <span className={getSignalBadgeClass(stock.ai_signal)}>
+                  {stock.ai_signal}
+                </span>
+              </td>
+              <td>{stock.ai_target ? `₹${stock.ai_target.toFixed(2)}` : "—"}</td>
+              <td>{stock.ai_stop_loss ? `₹${stock.ai_stop_loss.toFixed(2)}` : "—"}</td>
+              <td className="summary-cell">{stock.ai_summary}</td>
+              <td className="action-cell">
+                <div className="buy-action-group">
+                  <input
+                    type="number"
+                    min="1"
+                    className="qty-input"
+                    value={quantities[stock.symbol] || 1}
+                    onChange={(e) => handleQtyChange(stock.symbol, e.target.value)}
+                    title="Quantity"
+                  />
+                  <button
+                    className="btn-track"
+                    disabled={addingSymbol === stock.symbol}
+                    onClick={() => handleBuyClick(stock)}
+                  >
+                    {addingSymbol === stock.symbol ? "Adding..." : "+ Track"}
+                  </button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
-  )
+  );
 }
-
-export default BreakoutTable
