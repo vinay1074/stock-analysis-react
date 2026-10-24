@@ -1,34 +1,106 @@
 import { useEffect, useMemo, useState } from 'react'
-import BreakoutTable from './BreakoutTable'
+import { DataGrid } from '@mui/x-data-grid'
+import { Box, Chip, CircularProgress, Paper, Typography } from '@mui/material'
 import { fetchBreakoutData } from '../services/breakoutApi'
 import './BreakoutDashboard.css'
 
-const metricKeys = ['gain_pct', 'gain', 'return_pct', 'return', 'pct_change', 'change_pct']
-
-const getComparableValue = (row, key) => {
-  if (!key) return null
-
-  const value = row?.[key]
-  if (typeof value === 'number') return value
-
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number(value.replace(/[%,$\s]/g, ''))
-    return Number.isFinite(parsed) ? parsed : null
-  }
-
-  return null
+const formatPrice = (value) => {
+  const price = Number(value)
+  return Number.isFinite(price) ? `₹${price.toFixed(2)}` : '—'
 }
 
-const findMetricKey = (row) => {
-  if (!row) return ''
+const columns = [
+  {
+    field: 'symbol',
+    headerName: 'Symbol',
+    flex: 0.8,
+    minWidth: 78,
+    renderCell: ({ value }) => <strong>{value}</strong>,
+  },
+  {
+    field: 'close_price',
+    headerName: 'Close (₹)',
+    type: 'number',
+    flex: 0.9,
+    minWidth: 86,
+    valueFormatter: (value) => {
+      const price = Number(value)
+      return Number.isFinite(price) ? price.toFixed(2) : '—'
+    },
+  },
+  {
+    field: 'percentage_change',
+    headerName: '% Gain',
+    type: 'number',
+    flex: 0.8,
+    minWidth: 76,
+    renderCell: ({ value }) => {
+      const gain = Number(value)
+      const color = gain > 0 ? '#2e7d32' : gain < 0 ? '#d32f2f' : 'inherit'
 
-  const keys = Object.keys(row)
-  const match = metricKeys.find((metricKey) =>
-    keys.some((key) => key.toLowerCase() === metricKey.toLowerCase())
-  )
+      return (
+        <span style={{ color, fontWeight: 'bold' }}>
+          {Number.isFinite(gain) ? `${gain > 0 ? '+' : ''}${gain}%` : '—'}
+        </span>
+      )
+    },
+  },
+  {
+    field: 'volume',
+    headerName: 'Volume',
+    type: 'number',
+    flex: 1,
+    minWidth: 92,
+    valueFormatter: (value) => {
+      const volume = Number(value)
+      return Number.isFinite(volume) ? volume.toLocaleString() : '—'
+    },
+  },
+  {
+    field: 'ai_signal',
+    headerName: 'AI Signal',
+    flex: 0.9,
+    minWidth: 88,
+    renderCell: ({ value }) => {
+      const signal = String(value || 'Hold')
+      const signalType = signal.toLowerCase()
+      const color = signalType === 'buy' ? 'success' : signalType === 'sell' ? 'error' : signalType === 'hold' ? 'warning' : 'default'
 
-  return match || ''
-}
+      return <Chip label={signal} color={color} size="small" sx={{ fontWeight: 'bold', width: 80 }} />
+    },
+  },
+  {
+    field: 'ai_target',
+    headerName: 'Target (₹)',
+    type: 'number',
+    flex: 0.9,
+    minWidth: 88,
+    renderCell: ({ value }) => (
+      <span style={{ color: '#2e7d32', fontWeight: 500 }}>
+        {value === null || value === undefined || value === '' ? '—' : formatPrice(value)}
+      </span>
+    ),
+  },
+  {
+    field: 'ai_stop_loss',
+    headerName: 'Stop Loss (₹)',
+    type: 'number',
+    flex: 1,
+    minWidth: 96,
+    renderCell: ({ value }) => (
+      <span style={{ color: '#d32f2f', fontWeight: 500 }}>
+        {value === null || value === undefined || value === '' ? '—' : formatPrice(value)}
+      </span>
+    ),
+  },
+  {
+    field: 'ai_summary',
+    headerName: 'Technical & Fundamental Rationale',
+    flex: 1,
+    minWidth: 180,
+    sortable: false,
+  },
+]
 
 function BreakoutDashboard() {
   const [rows, setRows] = useState([])
@@ -36,9 +108,9 @@ function BreakoutDashboard() {
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [tradeDate, setTradeDate] = useState('2026-10-03')
-  const [minGain, setMinGain] = useState(3)
-  const [volQuantile, setVolQuantile] = useState(0.8)
-  const [sortKey, setSortKey] = useState('')
+  const [minGain, setMinGain] = useState(1.5)
+  const [volQuantile, setVolQuantile] = useState(0.5)
+  const [sortKey, setSortKey] = useState('volume')
   const [sortDirection, setSortDirection] = useState('desc')
 
   useEffect(() => {
@@ -56,18 +128,12 @@ function BreakoutDashboard() {
         const normalized = data.map((row, index) => ({
           ...row,
           id: `${row.symbol || 'stock'}-${index}`,
-          gain_pct: Number(row.percentage_change ?? row.gain_pct ?? row.gain ?? 0),
+          percentage_change: Number(row.percentage_change ?? row.gain_pct ?? row.gain ?? row.return_pct ?? row.return ?? row.pct_change ?? row.change_pct ?? 0),
+          close_price: Number(row.close_price ?? row.close ?? row.last_price ?? 0),
           volume: Number(row.volume ?? row.TTL_TRD_QNTY ?? 0),
-          close: Number(row.close_price ?? row.close ?? row.last_price ?? 0),
         }))
 
         setRows(normalized)
-
-        if (normalized.length) {
-          const defaultSort = findMetricKey(normalized[0]) || Object.keys(normalized[0])[0]
-          setSortKey(defaultSort)
-          setSortDirection('desc')
-        }
       } catch (err) {
         setError(err.message || 'Failed to load breakout data.')
       } finally {
@@ -89,40 +155,11 @@ function BreakoutDashboard() {
     }
 
     if (Number(minGain) > 0) {
-      nextRows = nextRows.filter((row) => {
-        const metricKey = findMetricKey(row)
-        const numericValue = getComparableValue(row, metricKey)
-        return numericValue !== null && numericValue >= Number(minGain)
-      })
-    }
-
-    const activeSortKey = sortKey || (rows[0] ? Object.keys(rows[0])[0] : '')
-
-    if (activeSortKey) {
-      nextRows.sort((a, b) => {
-        const left = getComparableValue(a, activeSortKey)
-        const right = getComparableValue(b, activeSortKey)
-
-        if (left === null && right === null) return 0
-        if (left === null) return 1
-        if (right === null) return -1
-
-        return sortDirection === 'asc' ? left - right : right - left
-      })
+      nextRows = nextRows.filter((row) => row.percentage_change >= Number(minGain))
     }
 
     return nextRows
-  }, [rows, searchTerm, minGain, sortKey, sortDirection])
-
-  const handleSort = (column) => {
-    if (sortKey === column) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-      return
-    }
-
-    setSortKey(column)
-    setSortDirection('desc')
-  }
+  }, [rows, searchTerm, minGain])
 
   return (
     <div className="app-shell">
@@ -182,10 +219,10 @@ function BreakoutDashboard() {
           type="button"
           onClick={() => {
             setTradeDate('2026-10-03')
-            setMinGain(3)
-            setVolQuantile(0.8)
+            setMinGain(1.5)
+            setVolQuantile(0.5)
             setSearchTerm('')
-            setSortKey('')
+            setSortKey('volume')
             setSortDirection('desc')
           }}
         >
@@ -204,16 +241,50 @@ function BreakoutDashboard() {
         </div>
         <div className="stat-card">
           <span>Sort</span>
-          <strong>{sortKey || 'Default'} {sortDirection === 'asc' ? '↑' : '↓'}</strong>
+          <strong>{sortKey} {sortDirection === 'asc' ? '↑' : '↓'}</strong>
         </div>
       </div>
 
       {error ? <div className="alert error">{error}</div> : null}
 
       {loading ? (
-        <div className="loading-box">Loading breakout data...</div>
+        <Box className="loading-box" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 180 }}>
+          <CircularProgress size={30} />
+          <Typography variant="h6" color="text.secondary">
+            Calculating technicals &amp; querying the AI screener...
+          </Typography>
+        </Box>
       ) : (
-        <BreakoutTable rows={filteredRows} sortKey={sortKey} sortDirection={sortDirection} onSort={handleSort} />
+        <Paper elevation={3} className="grid-paper">
+          {filteredRows.length ? (
+            <DataGrid
+              rows={filteredRows}
+              columns={columns}
+              sortModel={[{ field: sortKey, sort: sortDirection }]}
+              onSortModelChange={(model) => {
+                const activeSort = model[0]
+                if (activeSort) {
+                  setSortKey(activeSort.field)
+                  setSortDirection(activeSort.sort)
+                }
+              }}
+              initialState={{ pagination: { paginationModel: { pageSize: 10, page: 0 } } }}
+              pageSizeOptions={[10, 25, 50]}
+              disableRowSelectionOnClick
+              rowHeight={48}
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: '#f0f0f0',
+                  borderBottom: '2px solid #ccc',
+                },
+                '& .MuiDataGrid-cell': { fontSize: '14px' },
+              }}
+            />
+          ) : (
+            <div className="empty-state">No breakout records found.</div>
+          )}
+        </Paper>
       )}
     </div>
   )

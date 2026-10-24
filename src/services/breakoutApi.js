@@ -1,8 +1,8 @@
 const buildQueryString = (params = {}) => {
   const query = new URLSearchParams({
     trade_date: params.tradeDate || '2026-10-03',
-    min_gain: String(params.minGain ?? 3),
-    vol_quantile: String(params.volQuantile ?? 0.8),
+    min_gain: String(params.minGain ?? 1.5),
+    vol_quantile: String(params.volQuantile ?? 0.5),
   })
 
   return query.toString()

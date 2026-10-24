@@ -1,23 +1,32 @@
 .app-shell {
-  width: min(1280px, calc(100% - 32px));
-  margin: 32px auto;
-  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0 auto;
+  padding: clamp(12px, 2vw, 24px);
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 24px;
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
 }
 
 .dashboard-header {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.8vw, 2.4rem);
+  line-height: 1.15;
 }
 
 .eyebrow {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -45,10 +54,10 @@ h1 {
 .toolbar {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 16px;
-  padding: 18px;
-  margin-bottom: 18px;
-  border-radius: 18px;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 14px;
   background: rgba(248, 250, 252, 0.9);
   border: 1px solid #e2e8f0;
 }
@@ -57,7 +66,7 @@ h1 {
 .search-box {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
   color: #475569;
   font-size: 0.8rem;
   font-weight: 700;
@@ -66,11 +75,11 @@ h1 {
 .field-box input,
 .search-box input {
   width: 100%;
-  min-height: 46px;
-  border-radius: 12px;
+  min-height: 38px;
+  border-radius: 9px;
   border: 1px solid #dbe3f0;
   background: #fff;
-  padding: 0 14px;
+  padding: 0 10px;
   color: #0f172a;
   font-size: 0.95rem;
   outline: none;
@@ -88,11 +97,11 @@ h1 {
 }
 
 .clear-button {
-  min-height: 46px;
+  min-height: 38px;
   align-self: end;
   border: none;
-  border-radius: 12px;
-  padding: 0 18px;
+  border-radius: 9px;
+  padding: 0 14px;
   background: linear-gradient(135deg, #111827, #1f2937);
   color: white;
   font-weight: 700;
@@ -108,13 +117,13 @@ h1 {
 .stats-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(140px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .stat-card {
-  padding: 18px 20px;
-  border-radius: 18px;
+  padding: 10px 14px;
+  border-radius: 12px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
@@ -131,12 +140,12 @@ h1 {
   font-size: 0.76rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
 }
 
 .stat-card strong {
   color: #0f172a;
-  font-size: clamp(1.3rem, 2vw, 2rem);
+  font-size: clamp(1rem, 1.5vw, 1.4rem);
 }
 
 .table-wrap {
@@ -144,6 +153,24 @@ h1 {
   border: 1px solid #e2e8f0;
   border-radius: 18px;
   background: #fff;
+}
+
+.grid-paper {
+  display: flex;
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 160px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  padding: 4px;
+}
+
+.grid-paper .MuiDataGrid-root {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
 
 table {
@@ -214,6 +241,21 @@ tbody tr:last-child td {
   margin-top: 16px;
 }
 
+.loading-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  margin-top: 0;
+}
+
+.alert.error {
+  flex: 0 0 auto;
+  margin: 0 0 10px;
+  padding: 10px 14px;
+}
+
 .alert.error {
   background: #fef2f2;
   border-color: #fecaca;
@@ -222,27 +264,88 @@ tbody tr:last-child td {
 
 @media (max-width: 900px) {
   .toolbar {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .grid-paper .MuiDataGrid-cell {
+    font-size: 12px;
   }
 }
 
 @media (max-width: 640px) {
   .app-shell {
-    width: min(100% - 20px, 1280px);
-    padding: 18px 14px;
-    margin: 18px auto;
+    padding: 10px;
   }
 
   .dashboard-header {
-    flex-direction: column;
-    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.45rem;
+  }
+
+  .meta-badge {
+    padding: 7px 10px;
+    font-size: 0.75rem;
   }
 
   .toolbar {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 9px;
+    margin-bottom: 8px;
+  }
+
+  .search-box {
+    grid-column: span 2;
+  }
+
+  .clear-button {
+    align-self: end;
   }
 
   .stats-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .stat-card {
+    padding: 8px;
+  }
+
+  .stat-card span {
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+  }
+
+  .stat-card strong {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-height: 700px) {
+  .eyebrow {
+    display: none;
+  }
+
+  .dashboard-header {
+    margin-bottom: 8px;
+  }
+
+  .toolbar {
+    gap: 8px;
+    padding: 8px;
+    margin-bottom: 8px;
+  }
+
+  .stats-row {
+    margin-bottom: 8px;
+  }
+
+  .stat-card {
+    padding: 6px 10px;
   }
 }
